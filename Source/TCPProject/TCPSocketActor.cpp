@@ -29,73 +29,111 @@ ATCPSocketActor::ATCPSocketActor()
 
 bool ATCPSocketActor::ConnectServer()
 {
-	WSAData	wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
+	//WSAData	wsaData;
+	//WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-	Socket = socket(AF_INET, SOCK_STREAM, 0);
+	//Socket = socket(AF_INET, SOCK_STREAM, 0);
 
-	SOCKADDR_IN SockAddr;
+	//SOCKADDR_IN SockAddr;
 
-	memset(&SockAddr, 0, sizeof(SockAddr));
+	//memset(&SockAddr, 0, sizeof(SockAddr));
 
-	SockAddr.sin_family = PF_INET;
-	SockAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	SockAddr.sin_port = htons(3001);
+	//SockAddr.sin_family = PF_INET;
+	//SockAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	//SockAddr.sin_port = htons(3001);
 
-	int Connected = connect(Socket, (SOCKADDR*)&SockAddr, sizeof(SockAddr));
+	//int Connected = connect(Socket, (SOCKADDR*)&SockAddr, sizeof(SockAddr));
 	//Socket = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateSocket(TEXT("Stream"), TEXT("Client Socket"));
 
 
+	ClientSocket = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateSocket(NAME_Stream, TEXT("DefaultSocket"), false);
+	ClientAddress = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateInternetAddr();
 
-	//FString address = TEXT("127.0.0.1");
-	//FIPv4Address ip;
-	//FIPv4Address::Parse(address, ip);
+	int32 port = 3001;
 
-	//int32 port = 3001;
+	FString IP = TEXT("127.0.0.1");
+	FIPv4Address TemporaryAddr;
+	FIPv4Address::Parse(IP, TemporaryAddr);
 
-	//TSharedRef<FInternetAddr> addr = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateInternetAddr();
-	//addr->SetIp(ip.Value);
-	//addr->SetPort(port);
+	ClientAddress->SetPort(port);
+	ClientAddress->SetIp(TemporaryAddr.Value);
+	
 
 	GEngine->AddOnScreenDebugMessage(-1, 30.0f, FColor::Yellow, FString::Printf(TEXT("Trying to connect.")));
 
 	
-	return (Connected == 0);
+	return (ClientSocket->Connect(*ClientAddress));
 }
 
 void ATCPSocketActor::SendText()
 {
 	
-	char* Buffer = new char[512];
-	char Recv[512] = { 0, };
+	//char* Buffer = new char[512];
+	//char Recv[512] = { 0, };
 	
-	Buffer = TCHAR_TO_UTF8(*Text);
+	char* ClientText = new char[512];
+	ClientText = TCHAR_TO_UTF8(*Text);
 
-	SendByte = send(Socket, Buffer, strlen(Buffer) + 1, 0);
+	uint8_t Buffer[512];
+	memset(Buffer, '\0', std::size(Buffer));
 
-	RecvByte = recv(Socket, Recv, 512, 0);
-
-	RecvText = FString(UTF8_TO_TCHAR(Recv));
-
-	if (RecvText == "1" || RecvText == "2")
+	for (int i = 0; i < strlen(ClientText); ++i)
 	{
-		RecvByte = recv(Socket, Recv, 512, 0);
-		RecvText = FString(UTF8_TO_TCHAR(Recv));
-
-		char* IDBuf = new char[512];
-		char* PWBuf = new char[512];
-
-		IDBuf = TCHAR_TO_UTF8(*ID);
-		PWBuf = TCHAR_TO_UTF8(*PW);
-
-		SendByte = send(Socket, IDBuf, strlen(IDBuf) + 1, 0);
-		SendByte = send(Socket, PWBuf, strlen(PWBuf) + 1, 0);
-
-		char Check[512] = { 0, };
-
-		RecvByte = recv(Socket, Check, 512, 0);
-		CheckText = FString(UTF8_TO_TCHAR(Check));
+		Buffer[i] = ClientText[i];
 	}
+
+	//uint8 Buffer = FString::uint8
+
+	//memcpy(Buffer, &ClientText, sizeof(char));
+
+	int32 BytesSent = 0;
+	//if(ClientSocket->GetConnectionState() == ESocketConnectionState::SCS_Connected)
+	//{
+	ClientSocket->Send(Buffer, std::size(Buffer), BytesSent);
+	//}
+
+	uint8_t RecvBuf[512];
+
+	int32 BytesRecv = 0;
+	ClientSocket->Recv(RecvBuf, 512, BytesSent);
+
+	char* RecvClientText = new char[512];
+	memset(RecvClientText, '\0', strlen(RecvClientText));
+
+	for (int i = 0; i < std::size(RecvBuf); ++i)
+	{
+		RecvClientText[i] = RecvBuf[i];
+	}
+
+	RecvText = RecvClientText;
+
+	//SendByte = send(Socket, Buffer, strlen(Buffer) + 1, 0);
+
+	//RecvByte = recv(Socket, Recv, 512, 0);
+
+	//RecvText = FString(UTF8_TO_TCHAR(Recv));
+
+	//if (RecvText == "1" || RecvText == "2")
+	//{
+	//	RecvByte = recv(Socket, Recv, 512, 0);
+	//	RecvText = FString(UTF8_TO_TCHAR(Recv));
+
+	//	char* IDBuf = new char[512];
+	//	char* PWBuf = new char[512];
+
+	//	IDBuf = TCHAR_TO_UTF8(*ID);
+	//	PWBuf = TCHAR_TO_UTF8(*PW);
+
+	//	SendByte = send(Socket, IDBuf, strlen(IDBuf) + 1, 0);
+	//	SendByte = send(Socket, PWBuf, strlen(PWBuf) + 1, 0);
+
+	//	char Check[512] = { 0, };
+
+	//	RecvByte = recv(Socket, Check, 512, 0);
+	//	CheckText = FString(UTF8_TO_TCHAR(Check));
+	//}
+
+	//delete[] ClientText;
 }
 
 void ATCPSocketActor::BeginPlay()
@@ -108,10 +146,23 @@ void ATCPSocketActor::BeginPlay()
 	else {
 		GEngine->AddOnScreenDebugMessage(-1, 30.0f, FColor::Red, FString::Printf(TEXT("Connect Falied")));
 	}
-
+	
 }
 
 void ATCPSocketActor::Tick(float DeltaTime)
 {
+}
+
+void ATCPSocketActor::Send(uint32 Type, const FString& SendText)
+{
+	SCOPE_CYCLE_COUNTER(STAT_Send)
+		FTCHARToUTF8 Convert(*Text);
+	FArrayWriter WriterArray;
+	WriterArray.Serialize((UTF8CHAR*)Convert.Get(), Convert.Length());
+
+	if (/*ATCPSocketActor::SendPacket(Socket, Type, WriterArray)*/1)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Sent Text : %s  Size : %d"), *Text, WriterArray.Num());
+	}
 }
 

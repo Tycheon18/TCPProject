@@ -22,6 +22,10 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
+DECLARE_STATS_GROUP(TEXT("TCPSocketActor"), STATGROUP_TCPSocketActor, STATCAT_Advanced);
+DECLARE_CYCLE_STAT(TEXT("Send"), STAT_Send, STATGROUP_TCPSocketActor);
+DECLARE_CYCLE_STAT(TEXT("Recv"), STAT_Recv, STATGROUP_TCPSocketActor);
+
 UCLASS()
 class TCPPROJECT_API ATCPSocketActor : public AActor
 {
@@ -40,6 +44,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "TCP")
 	FString RecvText = "";
 
+	TSharedPtr<FInternetAddr> ClientAddress;
+	class FSocket* ClientSocket;
+
 	SOCKET Socket;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "TCP")
@@ -51,6 +58,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "TCP")
 	FString CheckText = "";
 
+	
 
 	int SendByte = 0;
 
@@ -59,7 +67,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SendText();
 
-
+	//UFUNCTION(BlueprintCallable)
+	void Send(uint32 Type, const FString& Text);
 protected:
 	// Called when the game starts or when spawnedz
 	virtual void BeginPlay() override;
