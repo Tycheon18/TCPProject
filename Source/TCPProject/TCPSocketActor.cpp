@@ -17,6 +17,8 @@
 #include "SocketSubsystem.h"
 #include "Interfaces/IPv4/IPv4Address.h"
 
+#include "FTCPThread.h"
+
 #pragma comment(lib, "ws2_32.lib")
 
 // Sets default values
@@ -58,9 +60,7 @@ bool ATCPSocketActor::ConnectServer()
 	ClientAddress->SetPort(port);
 	ClientAddress->SetIp(TemporaryAddr.Value);
 	
-
 	GEngine->AddOnScreenDebugMessage(-1, 30.0f, FColor::Yellow, FString::Printf(TEXT("Trying to connect.")));
-
 	
 	return (ClientSocket->Connect(*ClientAddress));
 }
@@ -92,20 +92,20 @@ void ATCPSocketActor::SendText()
 	ClientSocket->Send(Buffer, std::size(Buffer), BytesSent);
 	//}
 
-	uint8_t RecvBuf[512];
+	//uint8_t RecvBuf[512];
 
-	int32 BytesRecv = 0;
-	ClientSocket->Recv(RecvBuf, 512, BytesSent);
+	//int32 BytesRecv = 0;
+	//ClientSocket->Recv(RecvBuf, 512, BytesSent);
 
-	char* RecvClientText = new char[512];
-	memset(RecvClientText, '\0', strlen(RecvClientText));
+	//char* RecvClientText = new char[512];
+	//memset(RecvClientText, '\0', strlen(RecvClientText));
 
-	for (int i = 0; i < std::size(RecvBuf); ++i)
-	{
-		RecvClientText[i] = RecvBuf[i];
-	}
+	//for (int i = 0; i < std::size(RecvBuf); ++i)
+	//{
+	//	RecvClientText[i] = RecvBuf[i];
+	//}
 
-	RecvText = RecvClientText;
+	//RecvText = RecvClientText;
 
 	//SendByte = send(Socket, Buffer, strlen(Buffer) + 1, 0);
 
@@ -166,3 +166,171 @@ void ATCPSocketActor::Send(uint32 Type, const FString& SendText)
 	}
 }
 
+void ATCPSocketActor::StartThread()
+{
+	if(!TCPThread)
+	{
+		TCPThread = FRunnableThread::Create(FTCPThreadInstance, TEXT("TCPThread"));
+		while (!FTCPThreadInstance->IsThreadRunning())
+		{
+			FPlatformProcess::Sleep(0.1f);
+		}
+	}
+}
+
+void ATCPSocketActor::Login()
+{
+	uint8_t Buffer[512];
+	memset(Buffer, '\0', std::size(Buffer));
+
+	Buffer[0] = '1';
+
+	int32 BytesSent = 0;
+	ClientSocket->Send(Buffer, std::size(Buffer), BytesSent);
+
+	char* ClientText = new char[512];
+	ClientText = TCHAR_TO_UTF8(*ID);
+
+
+	memset(Buffer, '\0', std::size(Buffer));
+
+	for (int i = 0; i < strlen(ClientText); ++i)
+	{
+		Buffer[i] = ClientText[i];
+	}
+
+	ClientSocket->Send(Buffer, std::size(Buffer), BytesSent);
+
+	ClientText = TCHAR_TO_UTF8(*PW);
+
+	memset(Buffer, '\0', std::size(Buffer));
+
+	for (int i = 0; i < strlen(ClientText); ++i)
+	{
+		Buffer[i] = ClientText[i];
+	}
+
+	ClientSocket->Send(Buffer, std::size(Buffer), BytesSent);
+
+	RecvText = "";
+
+	uint8_t RecvBuf[512];
+	RecvByte = 0;
+
+	ClientSocket->Recv(RecvBuf, 512, RecvByte);
+
+	char* RecvClientText = new char[512];
+	memset(RecvClientText, '\0', strlen(RecvClientText));
+
+	for (int i = 0; i < std::size(RecvBuf); ++i)
+	{
+		RecvClientText[i] = RecvBuf[i];
+	}
+
+	RecvText = RecvClientText;
+
+	GEngine->AddOnScreenDebugMessage(-1, 30.0f, FColor::Green, RecvText);
+
+	if (RecvText == "Login Success!")
+	{
+		isLogin = true;
+	}
+}
+
+void ATCPSocketActor::SignUp()
+{
+	uint8_t Buffer[512];
+	memset(Buffer, '\0', std::size(Buffer));
+
+	Buffer[0] = '2';
+	int32 BytesSent = 0;
+	ClientSocket->Send(Buffer, std::size(Buffer), BytesSent);
+
+	char* ClientText = new char[512];
+	ClientText = TCHAR_TO_UTF8(*ID);
+
+
+	memset(Buffer, '\0', std::size(Buffer));
+
+	for (int i = 0; i < strlen(ClientText); ++i)
+	{
+		Buffer[i] = ClientText[i];
+	}
+
+	ClientSocket->Send(Buffer, std::size(Buffer), BytesSent);
+
+	ClientText = TCHAR_TO_UTF8(*PW);
+
+	memset(Buffer, '\0', std::size(Buffer));
+
+	for (int i = 0; i < strlen(ClientText); ++i)
+	{
+		Buffer[i] = ClientText[i];
+	}
+
+	ClientSocket->Send(Buffer, std::size(Buffer), BytesSent);
+
+
+	RecvText = "";
+
+	uint8_t RecvBuf[512];
+	RecvByte = 0;
+
+	ClientSocket->Recv(RecvBuf, 512, RecvByte);
+
+	char* RecvClientText = new char[512];
+	memset(RecvClientText, '\0', strlen(RecvClientText));
+
+	for (int i = 0; i < std::size(RecvBuf); ++i)
+	{
+		RecvClientText[i] = RecvBuf[i];
+	}
+
+	RecvText = RecvClientText;
+
+	GEngine->AddOnScreenDebugMessage(-1, 30.0f, FColor::Green, RecvText);
+
+
+}
+
+void ATCPSocketActor::StopThread()
+{
+	if (FTCPThreadInstance->IsThreadRunning())
+	{
+		FTCPThreadInstance->Stop();
+		TCPThread->WaitForCompletion();
+
+		delete FTCPThreadInstance;
+		TCPThread = nullptr;
+	}
+}
+
+void ATCPSocketActor::SendToThread()
+{
+	char* ClientText = new char[512];
+	ClientText = TCHAR_TO_UTF8(*Text);
+
+	uint8_t Buffer[512];
+	memset(Buffer, '\0', std::size(Buffer));
+
+	for (int i = 0; i < strlen(ClientText); ++i)
+	{
+		Buffer[i] = ClientText[i];
+	}
+
+	int32 BytesSent = 0;
+
+	FSocket* ThreadSocket = FTCPThreadInstance->ServerSocket;
+
+	ThreadSocket->Send(Buffer, std::size(Buffer), BytesSent);
+}
+
+void ATCPSocketActor::ReceiveToThread()
+{
+	RecvText = FTCPThreadInstance->RecvText;
+}
+
+bool ATCPSocketActor::SuccessLogin()
+{
+	return isLogin;
+}

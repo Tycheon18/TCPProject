@@ -18,7 +18,10 @@
 #include "Sockets.h"
 #include "SocketSubsystem.h"
 #include "Interfaces/IPv4/IPv4Address.h"
+#include "FTCPThread.h"
 #include "TCPSocketActor.generated.h"
+
+
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -58,17 +61,43 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "TCP")
 	FString CheckText = "";
 
-	
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "TCP")
+	bool isLogin = false;
+
+	class FTCPThread* FTCPThreadInstance = new FTCPThread();
+
+	class FRunnableThread* TCPThread;
 
 	int SendByte = 0;
 
-	int RecvByte = 0;
+	int32 RecvByte = 0;
 
 	UFUNCTION(BlueprintCallable)
 	void SendText();
 
+	UFUNCTION(BlueprintCallable)
+	void Login();
+
+	UFUNCTION(BlueprintCallable)
+	void SignUp();
+
 	//UFUNCTION(BlueprintCallable)
 	void Send(uint32 Type, const FString& Text);
+
+	UFUNCTION(BlueprintCallable)
+	void StartThread();
+
+	UFUNCTION(BlueprintCallable)
+	void SendToThread();
+
+	UFUNCTION(BlueprintCallable)
+	void ReceiveToThread();
+
+	UFUNCTION(BlueprintCallable)
+	void StopThread();
+
+	UFUNCTION(BlueprintCallable)
+	bool SuccessLogin();
 protected:
 	// Called when the game starts or when spawnedz
 	virtual void BeginPlay() override;

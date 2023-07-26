@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HAL/Runnable.h"
 
 /**
  * 
@@ -14,12 +15,20 @@ public:
 	~FTCPThread() override;
 
 	bool Init() override;
-	uint32 Run() override;
-	void Exit() override;
-
+	virtual uint32 Run() override;
+	virtual void Stop() override;
+	bool IsThreadRunning() const;
 	
+	class FSocket* ServerSocket = nullptr;
+
+	FString RecvText = "";
+
 private:
-	TSharedPtr<FInternetAddr> ServerAddress;
-	class FSocket* ServerSocket;
-	FRunnableThread* Thread;
+	TSharedPtr<FInternetAddr> ServerAddress = nullptr;
+	
+	FRunnableThread* Thread = nullptr;
+
+	bool bIsRunThread = false;
+
+	bool bIsThreadRunning = false;
 };
